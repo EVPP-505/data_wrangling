@@ -1,0 +1,110 @@
+---
+title: "Data Wrangling in R"
+output: html_notebook
+---
+
+Today we are going to learn about data wrangling.  What does it mean to "wrangle data"?  Simply put, wrangling your data is making your 
+
+
+Primarily uses `dplyr` and `tidyr`
+```{r}
+library(dplyr)
+library(tidyr)
+library(ggplot2) #for the diamonds data set
+```
+
+
+`tbl_df` aka tibbles
+
+Mostly just a pretty way to view large (wide and/or long) data.
+
+`View()` (with a Capital V!)
+opens a spreadsheet-like view of your data to quickly visualize and filter the results.
+
+
+Pipes `%>%`
+
+are used for "chaining" results together
+
+```{r}
+# singular, line-by-line method to round a column and calculate the mean
+# extract the column and round
+dia_x <- round(diamonds$x, 2)
+# calculate the mean
+mean(dia_x)
+
+```
+
+```{r}
+# using a piped method
+diamonds$x %>% 
+  round(2) %>% 
+  mean()
+```
+
+
+Tidy data
+
+This is the format we have been working with.  Each *variable* in our data is a **column** and each *observation* is in a **row**.  Remember, R is vectorized, meaning our variables are vectors of data over which we can quickly and efficiently perform operations.
+
+Untidy data is a format that does not follow the variable/observation format.  Consider the following:
+
+```{r}
+untidy_df <- tibble(country = c("US", "CA", "DE"),
+                    `2010` = c(7000, 6500, 5000),
+                    `2015` = c(3000, 4500, 6000),
+                    `2017` = c(1500, 2000, 7000)
+                    )
+untidy_df
+```
+
+These data are in a format that does not allow for easy manipulation of the variables.  In this case, we cannot, for example, quickly extract years using a single variable `year`.  Another example, might be calculating the mean for each country.
+
+
+This is not an uncommon format for data.  It's not that the untidy data cannot be used in R.  Rather, the format makes indexing the variables more difficult, and more complex code is required to make this work. 
+
+We can `gather` the data into the format that R prefers.  We might want three columns with `country`, `year`, `n`.  We do this by using key, value pairs.  A key column contains the values from former column names, and a value column contains the values from each of those.
+
+```{r gather}
+# gather the untidy data into a tidy format.  The country column will be maintained
+tidy_df <- gather(untidy_df, 
+                  key = "year", 
+                  value = "n", 
+                  2:4) #the columns to use
+tidy_df
+```
+
+Notice that the country column values are replicated as needed to create observations.
+
+We can now use this tidy data to find specifis
+
+
+
+`Select()`
+simplifies the extraction of columns (variables) of data.
+
+`filter()`
+simplifies the extraction of rows (observations) meeting some criteria
+
+`mutate()`
+generate new variables.  We can generate multiple
+window functions = return a result of the same length as the input
+
+`summarize()`
+calcualte summary statistics
+
+`arrange()`
+Changes order of your data basing
+desc() = descending (highest to lowest)
+can do multiple columns (this, then by that)
+
+
+More complex
+`group_by()`
+
+```{r}
+tidy_df %>% 
+  group_by(country) %>% 
+  summarise(mean = mean(n), sum(n), n = n())
+```
+
