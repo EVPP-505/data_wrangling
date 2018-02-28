@@ -10,7 +10,6 @@ Primarily uses `dplyr` and `tidyr`
 ```{r}
 library(dplyr)
 library(tidyr)
-library(ggplot2) #for the diamonds data set
 ```
 
 
@@ -29,15 +28,16 @@ are used for "chaining" results together
 ```{r}
 # singular, line-by-line method to round a column and calculate the mean
 # extract the column and round
-dia_x <- round(diamonds$x, 2)
+# mtcars is a built in dataset to play with
+mpg_v <- round(mtcars$mpg, 2)
 # calculate the mean
-mean(dia_x)
+mean(mpg_v)
 
 ```
 
 ```{r}
 # using a piped method
-diamonds$x %>% 
+mtcars$mpg %>% 
   round(2) %>% 
   mean()
 ```
@@ -58,8 +58,7 @@ untidy_df <- tibble(country = c("US", "CA", "DE"),
 untidy_df
 ```
 
-These data are in a format that does not allow for easy manipulation of the variables.  In this case, we cannot, for example, quickly extract years using a single variable `year`.  Another example, might be calculating the mean for each country.
-
+These data are in a format that does not allow for easy manipulation of the variables.  In this case, we cannot, for example, quickly extract years using a single variable `year`.
 
 This is not an uncommon format for data.  It's not that the untidy data cannot be used in R.  Rather, the format makes indexing the variables more difficult, and more complex code is required to make this work. 
 
@@ -74,30 +73,79 @@ tidy_df <- gather(untidy_df,
 tidy_df
 ```
 
-Notice that the country column values are replicated as needed to create observations.
+Notice that the country column values are replicated as needed to create observations.  This might seem redundant compared to the untidy example, but you will see how this tidy data is really powerful.
 
-We can now use this tidy data to find specifis
+## The dplyr Package
 
+We can now use this tidy data to find specific answers to questions.  `dplyr` has a core set of functions that will be most helpful.  Most of the functions The full set of functions can be found in the (Data Transformation Cheatsheet)[https://github.com/rstudio/cheatsheets/raw/master/data-transformation.pdf].
 
 
 `Select()`
 simplifies the extraction of columns (variables) of data.
 
+```{r}
+# look at the structure of the data
+mtcars
+# select just a few columns
+mtcars %>% 
+  select(mpg, cyl, disp, hp)
+```
+
+```{r}
+# now try it using a range selection to get the same set
+mtcars %>% 
+  select(1:4)
+```
+
+```{r}
+# select by inverse
+mtcars %>% 
+  select(-carb, -gear, -am)
+```
+
+
 `filter()`
 simplifies the extraction of rows (observations) meeting some criteria
+
+```{r}
+mtcars %>% 
+  filter(mpg > 20)
+```
+
 
 `mutate()`
 generate new variables.  We can generate multiple
 window functions = return a result of the same length as the input
 
+```{r}
+mtcars %>% 
+  mutate(ratio = qsec / disp)
+```
+
 `summarize()`
-calcualte summary statistics
+calculate summary statistics
+
+```{r}
+mtcars %>% 
+  summarise(avg_mpg = mean(mpg))
+```
+
 
 `arrange()`
 Changes order of your data basing
 desc() = descending (highest to lowest)
 can do multiple columns (this, then by that)
+```{r}
+# sort by increasing displacement
+mtcars %>% 
+  arrange(disp)
+```
 
+```{r}
+# sort by decreasing displacement
+mtcars %>% 
+  arrange(desc(disp))
+```
 
 More complex
 `group_by()`
@@ -105,6 +153,17 @@ More complex
 ```{r}
 tidy_df %>% 
   group_by(country) %>% 
-  summarise(mean = mean(n), sum(n), n = n())
+  summarise(mean = mean(n), sum = sum(n), n = n())
 ```
 
+This is not a great data set, but you can continue to group the data set into more groups and summarize.
+
+```{r}
+tidy_df %>% 
+  group_by(country, year) %>% 
+  summarise(cases = sum(n)) %>% 
+  summarise(cases = sum(cases))
+```
+
+
+Now, let's take a look at some of your data...
