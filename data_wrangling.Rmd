@@ -3,53 +3,84 @@ title: "Data Wrangling in R"
 output: html_notebook
 ---
 
-Today we are going to learn about data wrangling.  What does it mean to "wrangle data"?  Simply put, wrangling your data is making your 
+Today we are going to learn about data wrangling.  What does it mean to "wrangle data"?  Simply put, wrangling your data is formatting and arranging it for easy and efficient manipulation.
 
+Wangling (or munging, or manipulation) in R primarily uses the `dplyr` and `tidyr` packages.  These packages are core elements of the `tidyverse`, which is RStudio's modern methodology for data wrangling.  So, while you can certainly load all the core packages using `tidyverse`, we will be focusing on just `dplyr` and `tidyr`.
 
-Primarily uses `dplyr` and `tidyr`
-```{r}
+```{r libraries}
 library(dplyr)
 library(tidyr)
 ```
 
 
-`tbl_df` aka tibbles
+## First Steps
 
-Mostly just a pretty way to view large (wide and/or long) data.
+The packages make use of a new type of data frame called, `tbl_df` aka tibbles (sounds a lot like tables).  Tibbles are mostly just a pretty way to view large (wide and/or long) data, but they form the foundation of modern R.  Realistically, you as a user won't notice the differnce because access to the data remains consistent with base R data frames.  You should be aware of them and the tools.
 
-`View()` (with a Capital V!)
-opens a spreadsheet-like view of your data to quickly visualize and filter the results.
+The first thing to do with a new data set is understand it's structure and format.  How many columns does it have?  How many rows?  The `View()` (with a Capital V!) opens a spreadsheet-like view of your data to quickly visualize and filter the results.
+
+```{r use-View}
+# view the built-in mtcars data using View().
+# This will open the data set in a spreadsheet-like view.
+View(mtcars)
+```
 
 
-Pipes `%>%`
+The `tidyverse` introduces a new operator, called a **pipe** to the R lexicon. Pipes, `%>%`, are used for "chaining" results together.  Chaining is a method for stringing together operations, one after another.  Another way to think of the syntax is the form: use this data to do this to it, then do this other thing, then do this next thing, and so on.
 
-are used for "chaining" results together
+Pipes pass the result of the previous operation (function) invisibly to the next operation.  You can call the data explicitly as a named argument, `.data`, but that is not necessary.
 
-```{r}
-# singular, line-by-line method to round a column and calculate the mean
-# extract the column and round
-# mtcars is a built in dataset to play with
-mpg_v <- round(mtcars$mpg, 2)
-# calculate the mean
-mean(mpg_v)
+To introduce this, let's first look at the standard line-by-line variable assignment.
+
+```{r rounded-mean-line}
+# singular, line-by-line method to calculate the mean and round a vector of data
+#  will will use mtcars, which is a built in dataset of car attributes to play with
+
+# first, extract the vector (column) of data from the data frame
+mpg_v <- mtcars$mpg
+
+# What does the data look like?
+mpg_v
+
+# next, calculate the mean
+mpg_m <- mean(mpg_v)
+mpg_m
+
+# now round the result to two decimal points
+round(mpg_m, 2)
 
 ```
 
-```{r}
+The same can be accomplished using the pipe method.
+
+```{r rounded-mean-pipe}
 # using a piped method
-mtcars$mpg %>% 
-  round(2) %>% 
-  mean()
+mtcars$mpg %>% #use this data
+  mean() %>% #then calculate the mean
+  round(2) # then round the result
+
+# ---------------
+# we can also assign the result to a variable
+# mpg_m_p <- mtcars$mpg %>% #use this data
+#   mean() %>% #then calculate the mean
+#   round(2) # then round the result
+# print the result
+# mpg_m_p
 ```
 
+The example above did not keep the variables like the line-by-line method, but we could very easliy have assigned the result to a variable.  The example above is a very simple example, and the benefits of piping might not be immediately obvious.  However, piping in more complex analysis clarifies the intent of your code and makes for readable code.
 
-Tidy data
 
-This is the format we have been working with.  Each *variable* in our data is a **column** and each *observation* is in a **row**.  Remember, R is vectorized, meaning our variables are vectors of data over which we can quickly and efficiently perform operations.
+## Tidy data
 
-Untidy data is a format that does not follow the variable/observation format.  Consider the following:
+Tidy data is organized data that is efficient for R to work with.  Each *variable* in our data is a **column** and each *observation* is in a **row**.  Remember, R is vectorized, meaning our variables are vectors of data over which we can quickly and efficiently perform operations.
 
-```{r}
+Untidy data is a format that does not follow the variable/observation format.  It's not that the untidy data cannot be used in R.  Rather, the format makes indexing the variables more difficult, and more complex code is required to make this work.
+
+Consider the following example:
+
+```{r untidy-data}
+# we can create a dummy data set to illustrate untidy data.
 untidy_df <- tibble(country = c("US", "CA", "DE"),
                     `2010` = c(7000, 6500, 5000),
                     `2015` = c(3000, 4500, 6000),
@@ -58,112 +89,205 @@ untidy_df <- tibble(country = c("US", "CA", "DE"),
 untidy_df
 ```
 
-These data are in a format that does not allow for easy manipulation of the variables.  In this case, we cannot, for example, quickly extract years using a single variable `year`.
+These data are in a format that does not allow for easy manipulation of the variables.  This format is often referred to as *wide*, where R is looking for *long* data.  In this case, we cannot, for example, quickly extract all years using a single variable, `year`, for use as a grouping variable for summary statistics.
 
-This is not an uncommon format for data.  It's not that the untidy data cannot be used in R.  Rather, the format makes indexing the variables more difficult, and more complex code is required to make this work. 
+This is not an uncommon format for data.  In fact, the format above is common when *collecting* data, but is not as easily used for *analysis* of those data.
 
-We can `gather` the data into the format that R prefers.  We might want three columns with `country`, `year`, `n`.  We do this by using key, value pairs.  A key column contains the values from former column names, and a value column contains the values from each of those.
+The `tidyr` package offers several functions for working with these untidy data.  We can `gather()` the data into the format that R prefers.  We might want three columns with `country`, `year`, `n`.  We do this by using **key**, **value** pairs.  A **key** column contains the values from former column names, and a value column contains the **values** from each of those columns.
 
 ```{r gather}
-# gather the untidy data into a tidy format.  The country column will be maintained
-tidy_df <- gather(untidy_df, 
-                  key = "year", 
-                  value = "n", 
-                  2:4) #the columns to use
+# gather the untidy data into a tidy format.
+# The country column will be maintained and will be extended as necessary
+# The format of the key/value arguments are the word key = "new_column_name_to_use"
+
+tidy_df <- gather(untidy_df, # the data to use
+                  key = "year", # the key (column names) that will become the categorical or factor
+                  value = "n", # the values that are associated with each key
+                  2:4) #the columns to use, skip the first column, country.  
 tidy_df
 ```
 
+
 Notice that the country column values are replicated as needed to create observations.  This might seem redundant compared to the untidy example, but you will see how this tidy data is really powerful.
 
-## The dplyr Package
+## The `dplyr` Package
 
-We can now use this tidy data to find specific answers to questions.  `dplyr` has a core set of functions that will be most helpful.  Most of the functions The full set of functions can be found in the (Data Transformation Cheatsheet)[https://github.com/rstudio/cheatsheets/raw/master/data-transformation.pdf].
+We can now use this tidy data to find specific answers to questions.  `dplyr` has a core set of functions that will be most helpful.  The full set of functions can be found in the (Data Transformation Cheatsheet)[https://github.com/rstudio/cheatsheets/raw/master/data-transformation.pdf].
+
+For fun we will use the new `starwars` data set that comes with `dplyr`
+
+```{r startwars}
+# look at the star wars data
+starwars
+
+```
 
 
-`Select()`
-simplifies the extraction of columns (variables) of data.
+### `Select()`
 
-```{r}
-# look at the structure of the data
-mtcars
+The `select()` function simplifies the extraction of columns (variables) of data.  Base R certainly has the ability to extract columns of data.  For example:
+
+```{r base_r}
+# select several columns by name
+starwars[c("name", "height", "skin_color")]
+
+# select by position
+starwars[c(1,2,5)]
+```
+
+Now try using `select()` from `dplyr`.  The code below uses pipes, but the functions also work without them.
+
+```{r select}
 # select just a few columns
-mtcars %>% 
-  select(mpg, cyl, disp, hp)
+starwars %>% #the data set
+  select(name, height, skin_color) #the column names
+
+# same call without the pipe
+# select(.data = starwars, name, height, skin_color)
 ```
 
-```{r}
+We can also use a range of values
+
+```{r select-range}
 # now try it using a range selection to get the same set
-mtcars %>% 
-  select(1:4)
+starwars %>% 
+  select(1:2,5)
 ```
 
-```{r}
+The primary difference in using `select()` is the simplified code (no [] or "" or c()), and the addition of "helper" functions used the slice and dice your data down to extactly what you are interested in.
+
+We can use negation to exclude columns, keeping all the rest.
+
+```{r select-inverse}
 # select by inverse
-mtcars %>% 
-  select(-carb, -gear, -am)
+starwars %>% 
+  select(-name, -height, -skin_color)
+```
+
+We can extract the columns that start with a particular letter of the alphabet or search for a partial string.
+
+```{r select-string}
+# select just the columns that start with h
+starwars %>% 
+  select(starts_with("h"))  
+```
+
+There are other helper functions that I'm not covering for simplicity, but you are encouraged to look at the cheatsheet or the website documentation for more examples.
+
+
+### `filter()`
+
+The `filter()` function simplifies the extraction of rows (observations) meeting some criteria.
+
+Again, the same can be done in base R.
+
+```{r base-r-filter}
+# the first three observations (rows)
+starwars[1:3,]
+```
+
+```{r base-r-filter2}
+# a more complex conditional example
+starwars[which(starwars$height > 160 & starwars$mass < 60), ] #don't forget that last comma!
+```
+
+Filtering observations based on specific criteria is where base R becomes a little tedious with all the extra calls to the data set and $ notation.  Also, you have to remember that extra "," at the end of the line to capture all the columns.
+
+The `dplyr` method offers a clear syntax to accomplish the same results.
+
+```{r filter}
+# filter the same critera
+starwars %>% 
+  filter(height > 160 & mass < 60)
+
+```
+
+`filter()` also has helper functions like is.na().
+
+```{r filter-na}
+# filter empty observations along with some other criteria
+starwars %>% 
+  filter(!is.na(mass) & eye_color == "blue" & species != "Human")
 ```
 
 
-`filter()`
-simplifies the extraction of rows (observations) meeting some criteria
+### `mutate()`
 
-```{r}
-mtcars %>% 
-  filter(mpg > 20)
+`mutate()` is used to generate new variables.  We can generate multiple values in a single call to the function.  `mutate()` is a window functions that will always return a result of the same length as the input.
+
+```{r bmi}
+# calculate the body mass index and convert the height to inches for the starwars dataset
+starwars %>% 
+  mutate(bmi = height/mass, height_in = height * 0.393701) %>% # pipe the result to a select to reduce the columns
+  select(name, height, mass, bmi, height_in)
+```
+
+### `summarize()`
+
+`summarize()` will calculate summary statistics.  Unlike `mutate()`, `summarize()` results in a singular value.  All you basic stats are available: mean, median, standard deviation, and other values like counts and sums.
+
+```{r summarize}
+# calculate the avg mass and height
+starwars %>% 
+  summarise(avg_mass = mean(mass, na.rm = TRUE), avg_height = mean(height, na.rm = TRUE))
+# notice we had to use the extra argument na.rm = TRUE to exclude NA values for the calculation.
+# we get an empty result otherwise.
 ```
 
 
-`mutate()`
-generate new variables.  We can generate multiple
-window functions = return a result of the same length as the input
+### `arrange()`
 
-```{r}
-mtcars %>% 
-  mutate(ratio = qsec / disp)
+Sorting data is done using `arrange()`.  The default is to sort ascending (lowest to highest)  Add the helper function desc() to reverse the order desc() = descending (highest to lowest).  We can also do multiple columns (sort this, then by that).
+
+```{r sort}
+# sort by increasing height
+starwars %>% 
+  arrange(height)
+
+# sort descending
+starwars %>% 
+  arrange(desc(height))
 ```
 
-`summarize()`
-calculate summary statistics
-
-```{r}
-mtcars %>% 
-  summarise(avg_mpg = mean(mpg))
+```{r sort-multiple}
+# sort by decreasing height, then mass
+starwars %>% 
+  arrange(desc(height, mass))
+# you have to scroll down a little to see the effect.  The second variable becomes the tie-breaker when the values are the same.
 ```
 
 
-`arrange()`
-Changes order of your data basing
-desc() = descending (highest to lowest)
-can do multiple columns (this, then by that)
-```{r}
-# sort by increasing displacement
-mtcars %>% 
-  arrange(disp)
-```
+### `group_by()`
 
-```{r}
-# sort by decreasing displacement
-mtcars %>% 
-  arrange(desc(disp))
-```
+The value of tidy data becomes more apparent when groups come into play.  We can use various variables to group and summarize results.  Using our original tidy data set from above, we can calculate the mean value for each year.
 
-More complex
-`group_by()`
-
-```{r}
+```{r group}
+# group by year and calculate the mean, the sum of values, and the number of observations
 tidy_df %>% 
   group_by(country) %>% 
   summarise(mean = mean(n), sum = sum(n), n = n())
 ```
 
-This is not a great data set, but you can continue to group the data set into more groups and summarize.
+You can also use multiple grouping factors to derive statistics for each unique group.
+
+```{r multiple-groups}
+# determine the average hight and mass for each species by gender
+starwars %>% 
+  group_by(species, gender) %>% 
+  summarize(avg_mass = mean(mass, na.rm = TRUE), avg_height = mean(height, na.rm = TRUE)) 
+```
+
+## Put it all together
+
+The real power of data wrangling is to find only the data you interested in.  We can put all these methods together into a piped operation to drill down into the data and find answers.
 
 ```{r}
-tidy_df %>% 
-  group_by(country, year) %>% 
-  summarise(cases = sum(n)) %>% 
-  summarise(cases = sum(cases))
+starwars %>% #the data
+  filter(species %in% c("Human", "Kaminoan", "Twi'lek")) %>% # subset the data to a few species
+  group_by(species, gender) %>% # group by species and gender
+  summarize(avg_mass = mean(mass, na.rm = TRUE), avg_height = mean(height, na.rm = TRUE)) 
+  # calculate the avg mass and height
+
 ```
 
 
-Now, let's take a look at some of your data...
